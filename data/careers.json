@@ -1,0 +1,50 @@
+[
+  {
+    "id": 1,
+    "name": "Yazılım Geliştirici",
+    "field": "Software",
+    "interests": ["teknoloji", "problem çözme", "mantık"],
+    "skills": ["python", "algoritma", "debug"],
+    "education_level": "lise",
+    "remote_possible": true,
+    "risk_level": 2,
+    "description": "Uygulama ve sistem geliştirir, dijital ürünler üretir.",
+    "next_roles": ["Senior Developer", "Tech Lead", "CTO"]
+  },
+  {
+    "id": 2,
+    "name": "UI/UX Tasarımcı",
+    "field": "Design",
+    "interests": ["tasarım", "yaratıcılık", "kullanıcı deneyimi"],
+    "skills": ["figma", "tasarım", "empati"],
+    "education_level": "lise",
+    "remote_possible": true,
+    "risk_level": 3,
+    "description": "Kullanıcı dostu ve estetik arayüzler tasarlar.",
+    "next_roles": ["Senior Designer", "Product Designer", "Design Lead"]
+  },
+  {
+    "id": 3,
+    "name": "Veri Analisti",
+    "field": "Data",
+    "interests": ["veri", "analiz", "istatistik"],
+    "skills": ["python", "sql", "excel"],
+    "education_level": "universite",
+    "remote_possible": true,
+    "risk_level": 2,
+    "description": "Verileri analiz eder, karar süreçlerini destekler.",
+    "next_roles": ["Senior Analyst", "Data Scientist"]
+  },
+  {
+    "id": 4,
+    "name": "Girişimci",
+    "field": "Business",
+    "interests": ["liderlik", "yenilik", "iş"],
+    "skills": ["iletişim", "strateji", "satış"],
+    "education_level": "fark_etmez",
+    "remote_possible": false,
+    "risk_level": 5,
+    "description": "Kendi işini kurar ve yönetir.",
+    "next_roles": ["Startup Founder", "CEO"]
+  }
+]
