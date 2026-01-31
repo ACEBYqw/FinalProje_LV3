@@ -3,7 +3,7 @@
 
 # Discord entegrasyonu MVP++ kapsamında planlıdır
 # Token final sürümde eklenecektir
-BOT_TOKEN = 'git reset --soft HEAD~1'
+BOT_TOKEN = ''
 
 # Uygulama durumu
 APP_STAGE = "mvp"   # mvp / production

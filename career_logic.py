@@ -1,88 +1,19 @@
 # career_logic.py
 """
-Kariyer öneri motoru
-- Puanlama sistemi
-- Açıklama üretimi
-- Genişletilebilir mimari
+CareerSensei - Kariyer Öneri Motoru
+models.py + database.py uyumlu
 """
 
-from dataclasses import dataclass
 from typing import List, Dict
-
-
-# -----------------------------
-# DATA MODELLERİ
-# -----------------------------
-
-@dataclass
-class Career:
-    name: str
-    interests: List[str]
-    skills: List[str]
-    education_level: str
-    remote_possible: bool
-    risk_level: int  # 1 = düşük, 5 = yüksek
-    description: str
-
-
-@dataclass
-class UserProfile:
-    interests: List[str]
-    skills: List[str]
-    education_level: str
-    wants_remote: bool
-    risk_tolerance: int  # 1–5 arası
-
-
-# -----------------------------
-# KARİYER VERİ SETİ (DEMO)
-# -----------------------------
-
-CAREERS: List[Career] = [
-    Career(
-        name="Yazılım Geliştirici",
-        interests=["teknoloji", "problem çözme", "mantık"],
-        skills=["python", "algoritma", "debug"],
-        education_level="lise",
-        remote_possible=True,
-        risk_level=2,
-        description="Uygulama ve sistem geliştirir."
-    ),
-    Career(
-        name="Veri Analisti",
-        interests=["veri", "istatistik", "analiz"],
-        skills=["python", "sql", "excel"],
-        education_level="üniversite",
-        remote_possible=True,
-        risk_level=2,
-        description="Verilerden anlamlı sonuçlar çıkarır."
-    ),
-    Career(
-        name="Girişimci",
-        interests=["iş", "liderlik", "yenilik"],
-        skills=["iletişim", "strateji", "satış"],
-        education_level="fark etmez",
-        remote_possible=False,
-        risk_level=5,
-        description="Kendi işini kurar ve yönetir."
-    ),
-    Career(
-        name="UI/UX Tasarımcı",
-        interests=["tasarım", "yaratıcılık", "kullanıcı deneyimi"],
-        skills=["figma", "tasarım", "empati"],
-        education_level="lise",
-        remote_possible=True,
-        risk_level=3,
-        description="Kullanıcı dostu arayüzler tasarlar."
-    ),
-]
+from models import CareerPath, UserProfile
+from database import load_careers
 
 
 # -----------------------------
 # PUANLAMA MOTORU
 # -----------------------------
 
-def calculate_score(user: UserProfile, career: Career) -> int:
+def calculate_score(user: UserProfile, career: CareerPath) -> int:
     score = 0
 
     # İlgi alanı eşleşmesi
@@ -91,13 +22,13 @@ def calculate_score(user: UserProfile, career: Career) -> int:
     # Beceri eşleşmesi
     score += len(set(user.skills) & set(career.skills)) * 4
 
-    # Eğitim seviyesi uyumu
-    if career.education_level == "fark etmez":
+    # Eğitim seviyesi
+    if career.education_level.lower() == "fark etmez":
         score += 2
-    elif user.education_level == career.education_level:
+    elif user.education_level.lower() == career.education_level.lower():
         score += 3
 
-    # Uzaktan çalışma tercihi
+    # Uzaktan çalışma
     if user.wants_remote and career.remote_possible:
         score += 2
 
@@ -112,31 +43,25 @@ def calculate_score(user: UserProfile, career: Career) -> int:
 # AÇIKLAMA ÜRETİCİ
 # -----------------------------
 
-def generate_reason(user: UserProfile, career: Career) -> str:
+def generate_reason(user: UserProfile, career: CareerPath) -> str:
     reasons = []
 
-    common_interests = set(user.interests) & set(career.interests)
-    if common_interests:
-        reasons.append(
-            f"ilgi alanların ({', '.join(common_interests)}) bu meslekle uyumlu"
-        )
+    if set(user.interests) & set(career.interests):
+        reasons.append("ilgi alanlarınla örtüşüyor")
 
-    common_skills = set(user.skills) & set(career.skills)
-    if common_skills:
-        reasons.append(
-            f"sahip olduğun beceriler ({', '.join(common_skills)}) avantaj sağlıyor"
-        )
+    if set(user.skills) & set(career.skills):
+        reasons.append("becerilerinle uyumlu")
 
     if user.wants_remote and career.remote_possible:
-        reasons.append("uzaktan çalışma isteğine uygun")
+        reasons.append("uzaktan çalışmaya uygun")
 
     if abs(user.risk_tolerance - career.risk_level) <= 1:
-        reasons.append("risk alma seviyenle uyumlu")
+        reasons.append("risk tercihinle uyumlu")
 
     if not reasons:
-        return "profilinle genel olarak uyumlu bir kariyer"
+        return "genel profil uyumu yüksek"
 
-    return "Bu meslek önerildi çünkü " + ", ".join(reasons) + "."
+    return "Bu kariyer önerildi çünkü " + ", ".join(reasons) + "."
 
 
 # -----------------------------
@@ -144,21 +69,24 @@ def generate_reason(user: UserProfile, career: Career) -> str:
 # -----------------------------
 
 def recommend_careers(user: UserProfile, top_n: int = 3) -> List[Dict]:
-    scored = []
+    careers = load_careers()
 
-    for career in CAREERS:
-        score = calculate_score(user, career)
-        scored.append((career, score))
+    scored = []
+    for career in careers:
+        scored.append((career, calculate_score(user, career)))
 
     scored.sort(key=lambda x: x[1], reverse=True)
 
-    recommendations = []
+    results = []
     for career, score in scored[:top_n]:
-        recommendations.append({
+        results.append({
             "career": career.name,
             "score": score,
-            "description": career.description,
-            "reason": generate_reason(user, career)
+            "description": career.levels[0].description if career.levels else "",
+            "reason": generate_reason(user, career),
+            "risk_level": career.risk_level,
+            "remote_possible": career.remote_possible,
+            "tags": career.tags
         })
 
-    return recommendations
+    return results

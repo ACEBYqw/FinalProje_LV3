@@ -1,54 +1,25 @@
-# database.py
-"""
-CareerSensei - Database Katmanı
-
-Bu dosya şunları yapar:
-- SQLite veritabanını oluşturur
-- Kullanıcı profillerini kaydeder / yükler
-- Kariyer ağaçlarını (CareerPath) saklar
-- Uygulamanın hafızasını yönetir
-"""
-
 import sqlite3
 import json
-from typing import Optional, List
-
-from models import UserProfile, CareerPath, CareerLevel
+from typing import List, Optional
+from models import CareerPath, CareerLevel
 
 DB_NAME = "careersensei.db"
 
 
-# =============================
-# DB BAĞLANTISI
-# =============================
-
+# -------------------------
+# DB CONNECTION
+# -------------------------
 def get_connection():
     return sqlite3.connect(DB_NAME)
 
 
-# =============================
-# DB OLUŞTURMA
-# =============================
-
-def init_db():
+# -------------------------
+# DB SETUP
+# -------------------------
+def setup_database():
     conn = get_connection()
     cursor = conn.cursor()
 
-    # Kullanıcı Profilleri
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        user_id INTEGER PRIMARY KEY,
-        interests TEXT,
-        skills TEXT,
-        education_level TEXT,
-        wants_remote INTEGER,
-        risk_tolerance INTEGER,
-        language TEXT,
-        created_at TEXT
-    )
-    """)
-
-    # Kariyer Ağaçları
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS careers (
         name TEXT PRIMARY KEY,
@@ -56,9 +27,18 @@ def init_db():
         skills TEXT,
         education_level TEXT,
         remote_possible INTEGER,
-        risk_level INTEGER,
+        risk_level TEXT,
         levels TEXT,
         tags TEXT
+    )
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS users (
+        user_id TEXT PRIMARY KEY,
+        interests TEXT,
+        skills TEXT,
+        recommended_career TEXT
     )
     """)
 
@@ -66,63 +46,9 @@ def init_db():
     conn.close()
 
 
-# =============================
-# USER PROFİLİ
-# =============================
-
-def save_user(profile: UserProfile):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    INSERT OR REPLACE INTO users
-    (user_id, interests, skills, education_level, wants_remote,
-     risk_tolerance, language, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    """, (
-        profile.user_id,
-        json.dumps(profile.interests),
-        json.dumps(profile.skills),
-        profile.education_level,
-        int(profile.wants_remote),
-        profile.risk_tolerance,
-        profile.language,
-        profile.created_at.isoformat()
-    ))
-
-    conn.commit()
-    conn.close()
-
-
-def load_user(user_id: int) -> Optional[UserProfile]:
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute(
-        "SELECT * FROM users WHERE user_id = ?",
-        (user_id,)
-    )
-    row = cursor.fetchone()
-    conn.close()
-
-    if not row:
-        return None
-
-    return UserProfile(
-        user_id=row[0],
-        interests=json.loads(row[1]),
-        skills=json.loads(row[2]),
-        education_level=row[3],
-        wants_remote=bool(row[4]),
-        risk_tolerance=row[5],
-        language=row[6],
-    )
-
-
-# =============================
-# KARİYER AĞAÇLARI
-# =============================
-
+# -------------------------
+# CAREER SAVE
+# -------------------------
 def save_career(career: CareerPath):
     conn = get_connection()
     cursor = conn.cursor()
@@ -132,14 +58,15 @@ def save_career(career: CareerPath):
             "title": lvl.title,
             "min_experience": lvl.min_experience,
             "description": lvl.description
-        } for lvl in career.levels
+        }
+        for lvl in career.levels
     ])
 
     cursor.execute("""
-    INSERT OR REPLACE INTO careers
-    (name, interests, skills, education_level, remote_possible,
-     risk_level, levels, tags)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT OR REPLACE INTO careers
+        (name, interests, skills, education_level, remote_possible,
+         risk_level, levels, tags)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         career.name,
         json.dumps(career.interests),
@@ -155,6 +82,9 @@ def save_career(career: CareerPath):
     conn.close()
 
 
+# -------------------------
+# LOAD CAREERS
+# -------------------------
 def load_careers() -> List[CareerPath]:
     conn = get_connection()
     cursor = conn.cursor()
@@ -190,3 +120,71 @@ def load_careers() -> List[CareerPath]:
         )
 
     return careers
+
+
+# -------------------------
+# USER PROFILE
+# -------------------------
+def save_user_profile(
+    user_id: str,
+    interests: List[str],
+    skills: List[str],
+    recommended_career: Optional[str]
+):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT OR REPLACE INTO users
+        (user_id, interests, skills, recommended_career)
+        VALUES (?, ?, ?, ?)
+    """, (
+        user_id,
+        json.dumps(interests),
+        json.dumps(skills),
+        recommended_career
+    ))
+
+    conn.commit()
+    conn.close()
+
+
+def get_user_profile(user_id: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT interests, skills, recommended_career
+        FROM users
+        WHERE user_id = ?
+    """, (user_id,))
+
+    result = cursor.fetchone()
+    conn.close()
+
+    if result is None:
+        return None
+
+    return {
+        "interests": json.loads(result[0]),
+        "skills": json.loads(result[1]),
+        "recommended_career": result[2]
+    }
+def save_or_update_user(user_id, interests, skills):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT OR REPLACE INTO users (user_id, interests, skills, recommended_career)
+        VALUES (?, ?, ?, COALESCE(
+            (SELECT recommended_career FROM users WHERE user_id=?), NULL)
+        )
+    """, (
+        user_id,
+        json.dumps(interests),
+        json.dumps(skills),
+        user_id
+    ))
+
+    conn.commit()
+    conn.close()
